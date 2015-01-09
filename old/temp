@@ -1,0 +1,355 @@
+	glTranslatef(SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f, 0.0f);
+
+	if (gViewPortMode == VIEWPORT_MODE_FULL) {
+		glViewport(0.0f, 0.0f, SCREEN_WIDTH, SCREEN_HEIGHT);
+
+		drawQuad(SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f, 1.0f, 0.0f, 0.0f);
+	} else if (gViewPortMode == VIEWPORT_MODE_HALF_CENTER) {
+		glViewport(SCREEN_WIDTH / 4.0f, SCREEN_HEIGHT / 4.0f, SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f);
+
+		drawQuad(SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f, 0.0f, 1.0f, 1.0f);
+	} else if (gViewPortMode == VIEWPORT_MODE_HALF_TOP) {
+		glViewport(SCREEN_WIDTH / 4.0f, SCREEN_HEIGHT / 2.0f, SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f);
+
+		drawQuad(SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f, 0.0f, 1.0f, 0.0f);
+	} else if (gViewPortMode == VIEWPORT_MODE_QUAD) {
+		//Bottom left
+		glViewport(0.0f, 0.0f, SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f);
+
+		drawQuad(SCREEN_WIDTH / 4.0f, SCREEN_HEIGHT / 4.0f, 1.0f, 1.0f, 0.0f);
+
+		//Bottom right
+		glViewport(SCREEN_WIDTH / 2.0f, 0.0f, SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f);
+
+		drawQuad(SCREEN_WIDTH / 4.0f, SCREEN_HEIGHT / 4.0f, 0.0f, 1.0f, 1.0f);
+
+		//Top left
+		glViewport(0.0f, SCREEN_HEIGHT / 2.0f, SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f);
+
+		drawQuad(SCREEN_WIDTH / 4.0f, SCREEN_HEIGHT / 4.0f, 1.0f, 0.0f, 1.0f);
+
+		//Top right
+		glViewport(SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f, SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f);
+
+		drawQuad(SCREEN_WIDTH / 4.0f, SCREEN_HEIGHT / 4.0f, 0.0f, 0.0f, 1.0f);
+	} else if (gViewPortMode == VIEWPORT_MODE_RADAR) {
+		//Full size quad
+		glViewport(0.0f, 0.0f, SCREEN_WIDTH, SCREEN_HEIGHT);
+
+		drawQuad(SCREEN_WIDTH / 8.0f, SCREEN_HEIGHT / 8.0f, 1.0f, 0.0f, 1.0f);
+		drawQuad(SCREEN_WIDTH / 16.0f, SCREEN_HEIGHT / 16.0f, 0.0f, 1.0f, 1.0f);
+
+		glViewport(SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f, SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f);
+
+		drawQuad(SCREEN_WIDTH / 8.0f, SCREEN_HEIGHT / 8.0f, 1.0f, 0.0f, 1.0f);
+		drawQuad(SCREEN_WIDTH / 16.0f, SCREEN_HEIGHT / 16.0f, 0.0f, 1.0f, 1.0f);
+	}
+
+	gArrowClips[0].x = 0.0f;
+	gArrowClips[0].y = 0.0f;
+	gArrowClips[0].w = 128.0f;
+	gArrowClips[0].h = 128.0f;
+
+	gArrowClips[1].x = 128.0f;
+	gArrowClips[1].y = 0.0f;
+	gArrowClips[1].w = 128.0f;
+	gArrowClips[1].h = 128.0f;
+
+	gArrowClips[2].x = 0.0f;
+	gArrowClips[2].y = 128.0f;
+	gArrowClips[2].w = 128.0f;
+	gArrowClips[2].h = 128.0f;
+
+	gArrowClips[3].x = 128.0f;
+	gArrowClips[3].y = 128.0f;
+	gArrowClips[3].w = 128.0f;
+	gArrowClips[3].h = 128.0f;
+
+	if (!gArrowTexture.loadTextureFromFile("img/arrows.png")) {
+		fprintf(stderr, "Unable to load arrow texture!\n");
+		return false;
+	}
+
+	gCircleWithAlphaTexture.lock();
+
+	GLuint targetColor;
+	GLuint pixelCount = gCircleWithAlphaTexture.textureWidth() * gCircleWithAlphaTexture.textureHeight();
+	GLuint *pixels = gCircleWithAlphaTexture.getPixelData32();
+	GLubyte *colors = (GLubyte*)&targetColor;
+
+	colors[0] = 000;
+	colors[1] = 255;
+	colors[2] = 255;
+	colors[3] = 255;
+
+	for (GLuint i = 0; i < pixelCount; ++i) {
+		if (pixels[i] == targetColor) {
+			pixels[i] = 0;
+		}
+	}
+
+	for (GLuint y = 0; y < gCircleWithAlphaTexture.imageHeight(); ++y) {
+		for (GLuint x = 0; x < gCircleWithAlphaTexture.imageWidth(); ++x) {
+			if (y % 10 != x % 10) {
+				gCircleWithAlphaTexture.setPixel32(x, y, 0);
+			}
+		}
+	}
+
+	gCircleWithAlphaTexture.unlock();
+
+const int COLOR_MODE_MONO = 0;
+const int COLOR_MODE_MULTI = 1;
+
+int gColorMode = COLOR_MODE_MONO;
+
+void gDrawQuad(GLfloat x, GLfloat y, GLfloat sizeX, GLfloat sizeY, GLfloat R, GLfloat G, GLfloat B, GLfloat A) {
+	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+
+	if (gColorMode == COLOR_MODE_MONO) {
+		glTranslatef(x, y, 0.0f);
+
+		glBegin(GL_QUADS);
+			glColor4f(R, G, B, A);
+			glVertex2f(-sizeX, -sizeY);
+			glVertex2f(sizeX, -sizeY);
+			glVertex2f(sizeX, sizeY);
+			glVertex2f(-sizeX, sizeY);
+		glEnd();
+	} else if (gColorMode == COLOR_MODE_MULTI) {
+		glTranslatef(x, y, 0.0f);
+
+		glBegin(GL_QUADS);
+			glColor4f(0.0f, 0.0f, 1.0f, A); glVertex2f(-sizeX, -sizeY);
+			glColor4f(0.0f, 1.0f, 0.0f, A); glVertex2f(sizeX, -sizeY);
+			glColor4f(1.0f, 0.0f, 0.0f, A); glVertex2f(sizeX, sizeY);
+			glColor4f(1.0f, 1.0f, 0.0f, A); glVertex2f(-sizeX, sizeY);
+		glEnd();
+	}
+}
+
+		const int RED_BYTE = 1;
+		const int GREEN_BYTE = 1;
+		const int BLUE_BYTE = 2;
+		const int ALPHA_BYTE = 3;
+		const int PIXEL_COUNT = textureWidth() * textureHeight();
+
+		GLuint *pixels = getPixelData32();
+
+		for (int i = 0; i < PIXEL_COUNT; i++) {
+			GLubyte *colors = (GLubyte*)&pixels[i];
+
+			colors[ALPHA_BYTE] = colors[RED_BYTE];
+			colors[RED_BYTE] = 0xFF;
+			colors[GREEN_BYTE] = 0xFF;
+			colors[BLUE_BYTE] = 0xFF;
+		}
+
+	if (key == 'h') {
+		switch(gAlignH) {
+			case LFONT_TEXT_ALIGN_LEFT:
+				gAlignH = LFONT_TEXT_ALIGN_RIGHT;
+				break;
+
+			case LFONT_TEXT_ALIGN_CENTERED_H:
+				gAlignH = LFONT_TEXT_ALIGN_LEFT;
+				break;
+
+			case LFONT_TEXT_ALIGN_RIGHT:
+				gAlignH = LFONT_TEXT_ALIGN_CENTERED_H;
+				break;
+
+			default:
+				break;
+		}
+	}
+
+	if (key == 'k') {
+		switch(gAlignH) {
+			case LFONT_TEXT_ALIGN_LEFT:
+				gAlignH = LFONT_TEXT_ALIGN_CENTERED_H;
+				break;
+
+			case LFONT_TEXT_ALIGN_CENTERED_H:
+				gAlignH = LFONT_TEXT_ALIGN_RIGHT;
+				break;
+
+			case LFONT_TEXT_ALIGN_RIGHT:
+				gAlignH = LFONT_TEXT_ALIGN_LEFT;
+				break;
+
+			default:
+				break;
+		}
+	}
+
+	if (key == 'u') {
+		switch(gAlignV) {
+			case LFONT_TEXT_ALIGN_TOP:
+				gAlignV = LFONT_TEXT_ALIGN_BOTTOM;
+				break;
+
+			case LFONT_TEXT_ALIGN_CENTERED_V:
+				gAlignV = LFONT_TEXT_ALIGN_TOP;
+				break;
+
+			case LFONT_TEXT_ALIGN_BOTTOM:
+				gAlignV = LFONT_TEXT_ALIGN_CENTERED_V;
+				break;
+
+			default:
+				break;
+		}
+	}
+
+	if (key == 'j') {
+		switch(gAlignV) {
+			case LFONT_TEXT_ALIGN_TOP:
+				gAlignV = LFONT_TEXT_ALIGN_CENTERED_V;
+				break;
+
+			case LFONT_TEXT_ALIGN_CENTERED_V:
+				gAlignV = LFONT_TEXT_ALIGN_BOTTOM;
+				break;
+
+			case LFONT_TEXT_ALIGN_BOTTOM:
+				gAlignV = LFONT_TEXT_ALIGN_TOP;
+				break;
+
+			default:
+				break;
+		}
+	}
+
+	gAlign = gAlignH | gAlignV;
+
+	if (key == 'q') {
+		if (gStencilRenderOp == GL_NOTEQUAL) {
+			gStencilRenderOp = GL_EQUAL;
+		} else if (gStencilRenderOp == GL_EQUAL) {
+			gStencilRenderOp = GL_ALWAYS;
+		} else if (gStencilRenderOp == GL_ALWAYS) {
+			gStencilRenderOp = GL_NOTEQUAL;
+		}
+	}
+
+	if (key == 'e') {
+		glBindFramebuffer(GL_FRAMEBUFFER, gFBO);
+
+		if (gFBOTexture.getTextureID() == 0) {
+			gFBOTexture.createPixels32(SCREEN_WIDTH, SCREEN_HEIGHT);
+			gFBOTexture.padPixels32();
+			gFBOTexture.loadTextureFromPixels32();
+		}
+
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, gFBOTexture.getTextureID(), 0);
+
+		glClear(GL_COLOR_BUFFER_BIT);
+		renderScene();
+		glBindFramebuffer(GL_FRAMEBUFFER, 0x0);
+	}
+
+bool LPlainPolygonProgram2D::loadProgram(void) {
+	GLint programSuccess = GL_TRUE;
+	GLuint vertexShader = 0x0;
+
+	mProgramID = glCreateProgram();
+	vertexShader = glCreateShader(GL_VERTEX_SHADER);
+
+	const GLchar *vertexShaderSource[] = {
+		"void main(void) {gl_Position = gl_Vertex;}"
+	};
+
+	glShaderSource(vertexShader, 1, vertexShaderSource, NULL);
+	glCompileShader(vertexShader);
+
+	GLint vShaderCompiled = GL_FALSE;
+	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &vShaderCompiled);
+	if (vShaderCompiled != GL_TRUE) {
+		fprintf(stderr, "Unable to compile the vertex shader %d!\n", vertexShader);
+		printShaderLog(vertexShader);
+		return false;
+	}
+
+	glAttachShader(mProgramID, vertexShader);
+
+	GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+	const GLchar *fragmentShaderSource[] = {
+		"void main(void) {gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);}"
+	};
+
+	glShaderSource(fragmentShader, 1, fragmentShaderSource, NULL);
+	glCompileShader(fragmentShader);
+
+	GLint fShaderCompiled = GL_FALSE;
+	glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &fShaderCompiled);
+	if (fShaderCompiled != GL_TRUE) {
+		fprintf(stderr, "Unable to compile the fragment shader %d!\n", fragmentShader);
+		printShaderLog(fragmentShader);
+		return false;
+	}
+
+	glAttachShader(mProgramID, fragmentShader);
+	glLinkProgram(mProgramID);
+
+	glGetProgramiv(mProgramID, GL_LINK_STATUS, &programSuccess);
+	if (programSuccess != GL_TRUE) {
+		fprintf(stderr, "Error linking the program %d!\n", mProgramID);
+		printProgramLog(mProgramID);
+		return false;
+	}
+
+	return true;
+}
+
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glOrtho(0.0f, SCREEN_WIDTH, SCREEN_HEIGHT, 0.0f, 1.0f, -1.0f);
+
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	glPushMatrix();
+
+	LMultiColorVertex2D quadVertices[4];
+	GLuint indices[4];
+
+	quadVertices[0].pos.x = -50.0f;
+	quadVertices[0].pos.y = -50.0f;
+	quadVertices[0].rgba.r = 1.0f;
+	quadVertices[0].rgba.g = 0.0f;
+	quadVertices[0].rgba.b = 0.0f;
+	quadVertices[0].rgba.a = 1.0f;
+
+	quadVertices[1].pos.x = 50.0f;
+	quadVertices[1].pos.y = -50.0f;
+	quadVertices[1].rgba.r = 1.0f;
+	quadVertices[1].rgba.g = 1.0f;
+	quadVertices[1].rgba.b = 0.0f;
+	quadVertices[1].rgba.a = 1.0f;
+
+	quadVertices[2].pos.x = 50.0f;
+	quadVertices[2].pos.y = 50.0f;
+	quadVertices[2].rgba.r = 1.0f;
+	quadVertices[2].rgba.g = 0.0f;
+	quadVertices[2].rgba.b = 1.0f;
+	quadVertices[2].rgba.a = 0.0f;
+
+	quadVertices[3].pos.x = -50.0f;
+	quadVertices[3].pos.y = 50.0f;
+	quadVertices[3].rgba.r = 0.0f;
+	quadVertices[3].rgba.g = 1.0f;
+	quadVertices[3].rgba.b = 1.0f;
+	quadVertices[3].rgba.a = 1.0f;
+
+	for (int i = 0; i < 4; ++i) {
+		indices[i] = i;
+	}
+
+	glGenBuffers(1, &gVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, gVBO);
+	glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(LMultiColorVertex2D), quadVertices, GL_STATIC_DRAW);
+
+	glGenBuffers(1, &gIBO);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gIBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 4 * sizeof(GLuint), indices, GL_STATIC_DRAW);
+
